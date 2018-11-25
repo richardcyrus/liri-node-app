@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * LIRI Bot.
  *
@@ -8,49 +7,60 @@
 'use strict';
 
 require('dotenv').config();
-const settings = require('./config');
+const { logger, config } = require('./config');
+const argv = require('yargs')
+    .usage('Usage: $0 <command> [options]')
+    .commandDir('commands')
+    .demandCommand(1, 'Please choose one of the commands.')
+    .strict()
+    .help()
+    .argv;
+
+const fs = require('fs');
+const path = require('path');
 const request = require('request');
 const Spotify = require('node-spotify-api');
-// const moment = require('moment');
-const fs = require('fs');
+const moment = require('moment');
 
-function spotifyThisSong (songName) {
-    const query = {
-        type: 'track',
-        limit: 1,
-        query: songName
-    };
-
-    const spotify = new Spotify({
-        id: settings.config.spotify.id,
-        secret: settings.config.spotify.secret
-    });
-
-    spotify.search(query)
-        .then(function (data) {
-            console.log(data.tracks);
-        })
-        .catch(function (error) {
-            return console.error(error);
-        });
+// TODO: Wrap in function and generalize so doWhatItSays() can use this.
+switch (argv._[0]) {
+    case 'concert-this':
+        concertThis(argv.bandName);
+        break;
+    case 'spotify-this-song':
+        spotifyThisSong(argv.songName);
+        break;
+    case 'movie-this':
+        movieThis(argv.movieName);
+        break;
+    case 'do-what-it-says':
+        doWhatItSays();
+        break;
+    default:
+        logger.error('Invalid command!');
 }
 
-function concertThis (bandName) {
-    let eventData = [];
+// TODO: Error handling for bad artists/bands.
+function concertThis(bandName) {
+    const eventData = [];
 
-    /* venue name, venue location, event date */
-    const queryUrl = `${settings.config.bits.url}${bandName}/events?app_id=${settings.config.bits.key}`;
+    const query = {
+        url: `${config.bits.url}${bandName}/events`,
+        qs: {
+            app_id: config.bits.key
+        }
+    };
 
-    request.get(queryUrl, function (error, response, body) {
+    request.get(query, function(error, response, body) {
         if (error) {
             throw new Error(error);
         }
 
         if (response.statusCode === 200) {
             const events = JSON.parse(body);
-            // console.log(events);
 
-            events.forEach(function (event) {
+            // TODO: Validate each property is in the result.
+            events.forEach(function(event) {
                 eventData.push({
                     name: event.venue.name,
                     country: event.venue.country,
@@ -61,24 +71,48 @@ function concertThis (bandName) {
             });
         }
 
-        console.log(eventData);
+        logger.debug(eventData);
     });
 }
 
-function movieThis (movieName) {
+// TODO: Error handling for bad songs+artists.
+function spotifyThisSong(songName) {
     const query = {
-        url: settings.config.omdb.url,
+        type: 'track',
+        limit: 1,
+        query: songName
+    };
+
+    const spotify = new Spotify({
+        id: config.spotify.id,
+        secret: config.spotify.secret
+    });
+
+    // TODO: Validate properties are in the result and return required items.
+    spotify.search(query)
+        .then(function(data) {
+            logger.debug(data.tracks);
+        })
+        .catch(function(error) {
+            return logger.error(error);
+        });
+}
+
+// TODO: Error handling for bad Movie names.
+function movieThis(movieName) {
+    const query = {
+        url: config.omdb.url,
         qs: {
             t: movieName,
             type: 'movie',
             r: 'json',
             v: 1,
             plot: 'full',
-            apikey: settings.config.omdb.key
+            apikey: config.omdb.key
         }
     };
 
-    request.get(query, function (error, response, body) {
+    request.get(query, function(error, response, body) {
         if (error) {
             throw new Error(error);
         }
@@ -86,10 +120,12 @@ function movieThis (movieName) {
         if (response.statusCode === 200) {
             const movie = JSON.parse(body);
 
-            const rtRating = movie.Ratings.find(function (rating) {
+            // TODO: Handle no ratings.
+            const rtRating = movie.Ratings.find(function(rating) {
                 return rating.Source === 'Rotten Tomatoes';
             });
 
+            // TODO: Validate each property is in the result.
             const movieData = {
                 'Title': movie.Title,
                 'Released': movie.Released,
@@ -101,50 +137,42 @@ function movieThis (movieName) {
                 'Rotten Tomatoes Rating': rtRating.Value
             };
 
-            console.log(movieData);
+            logger.info(movieData);
         }
     });
 }
 
-function executeWhatItSays (command, parameter) {
-    if (!command || parameter === 'undefined') {
-        return;
-    }
+// TODO: Handle bad file format.
+function doWhatItSays() {
+    const stream = fs.createReadStream(path.join(__dirname, 'commands.csv'));
 
-    switch (command) {
-        case 'concert-this':
-            console.log(`Running ${command} with band name "${parameter}"`);
-            break;
-        case 'spotify-this-song':
-            console.log(`Running ${command} with song name "${parameter}"`);
-            break;
-        case 'movie-this':
-            console.log(`Running ${command} with movie name "${parameter}"`);
-            break;
-        default:
-            throw new Error('The specified command is not valid!');
-    }
-}
-
-function doWhatItSays () {
-    const stream = fs.createReadStream('commands.csv');
-
-    stream.on('data', function (data) {
+    stream.on('data', function(data) {
         data.toString().split('\n')
-            .forEach(function (line) {
-                let operation;
-                let parameter;
-                [operation, parameter] = line.split(',');
-                executeWhatItSays(operation, parameter);
+            .forEach(function(line) {
+                const [operation, parameter] = line.split(',');
+
+                // TODO: Return with reason for ABORT.
+                if (!operation || parameter === 'undefined') {
+                    return;
+                }
+
+                switch (operation) {
+                    case 'concert-this':
+                        concertThis(parameter);
+                        break;
+                    case 'spotify-this-song':
+                        spotifyThisSong(parameter);
+                        break;
+                    case 'movie-this':
+                        movieThis(parameter);
+                        break;
+                    default:
+                        throw new Error('The specified command is not valid!');
+                }
             });
     });
-    stream.on('error', function (error) {
-        console.error(error);
-        return false;
+
+    stream.on('error', function(error) {
+        return logger.error(error);
     });
 }
-
-// doWhatItSays();
-// concertThis('P!nk');
-// movieThis('Mr. Nobody');
-spotifyThisSong('The Sign Ace of Base');
