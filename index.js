@@ -15,12 +15,18 @@ const Spotify = require('node-spotify-api');
 const fs = require('fs');
 
 function spotifyThisSong (songName) {
+    const query = {
+        type: 'track',
+        limit: 1,
+        query: songName
+    };
+
     const spotify = new Spotify({
         id: settings.config.spotify.id,
         secret: settings.config.spotify.secret
     });
 
-    spotify.search({ type: 'track', query: songName })
+    spotify.search(query)
         .then(function (data) {
             console.log(data.tracks);
         })
@@ -67,7 +73,7 @@ function movieThis (movieName) {
             type: 'movie',
             r: 'json',
             v: 1,
-            plot: 'short',
+            plot: 'full',
             apikey: settings.config.omdb.key
         }
     };
@@ -141,4 +147,4 @@ function doWhatItSays () {
 // doWhatItSays();
 // concertThis('P!nk');
 // movieThis('Mr. Nobody');
-spotifyThisSong('The Sign');
+spotifyThisSong('The Sign Ace of Base');
