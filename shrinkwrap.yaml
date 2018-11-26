@@ -1,4 +1,5 @@
 dependencies:
+  chalk: 2.4.1
   dotenv: 6.1.0
   moment: 2.22.2
   node-spotify-api: 1.0.7
@@ -71,7 +72,6 @@ packages:
   /ansi-styles/3.2.1:
     dependencies:
       color-convert: 1.9.3
-    dev: true
     engines:
       node: '>=4'
     resolution:
@@ -168,7 +168,6 @@ packages:
       ansi-styles: 3.2.1
       escape-string-regexp: 1.0.5
       supports-color: 5.5.0
-    dev: true
     engines:
       node: '>=4'
     resolution:
@@ -375,7 +374,6 @@ packages:
     resolution:
       integrity: sha512-7dFHNmqeFSEt2ZBsCriorKnn3Z2pj+fd9kmI6QoWw4//DL+icEBfc0U7qJCisqrTsKTjw4fNFy2pW9OqStD84g==
   /escape-string-regexp/1.0.5:
-    dev: true
     engines:
       node: '>=0.8.0'
     resolution:
@@ -765,7 +763,6 @@ packages:
     resolution:
       integrity: sha512-sNvOCzEQNr/qrvJgc3UG/kD4QtlHycrzwS+6mfTrrSq97BvaYcPZZI1ZSqGSPR73Cxn4LKTD4PttRwfU7jWq5g==
   /has-flag/3.0.0:
-    dev: true
     engines:
       node: '>=4'
     resolution:
@@ -1676,7 +1673,6 @@ packages:
   /supports-color/5.5.0:
     dependencies:
       has-flag: 3.0.0
-    dev: true
     engines:
       node: '>=4'
     resolution:
@@ -1870,6 +1866,7 @@ registry: 'https://registry.npmjs.org/'
 shrinkwrapMinorVersion: 9
 shrinkwrapVersion: 3
 specifiers:
+  chalk: ^2.4.1
   dotenv: ^6.1.0
   eslint: ^5.9.0
   eslint-config-standard: ^12.0.0

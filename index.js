@@ -21,6 +21,7 @@ const path = require('path');
 const request = require('request');
 const Spotify = require('node-spotify-api');
 const moment = require('moment');
+const chalk = require('chalk');
 
 // TODO: Wrap in function and generalize so doWhatItSays() can use this.
 switch (argv._[0]) {
@@ -40,58 +41,86 @@ switch (argv._[0]) {
         logger.error('Invalid command!');
 }
 
-// TODO: Error handling for bad artists/bands.
-function concertThis(bandName) {
-    const eventData = [];
+/**
+ * Return the artist names from a Spotify track look-up.
+ *
+ * @param {Object} artists
+ * @returns {string}
+ */
+function getSpotifyArtists(artists) {
+    const names = [];
 
-    const query = {
-        url: `${config.bits.url}${bandName}/events`,
-        qs: {
-            app_id: config.bits.key
-        }
-    };
-
-    request.get(query, function(error, response, body) {
-        if (error) {
-            throw new Error(error);
-        }
-
-        if (response.statusCode === 200) {
-            const events = JSON.parse(body);
-
-            // TODO: Validate each property is in the result.
-            events.forEach(function(event) {
-                eventData.push({
-                    name: event.venue.name,
-                    country: event.venue.country,
-                    region: event.venue.region,
-                    city: event.venue.city,
-                    date: event.datetime
-                });
-            });
-        }
-
-        logger.debug(eventData);
+    artists.forEach(function(artist) {
+        names.push(artist.name);
     });
+
+    if (!names.length > 0) {
+        return '';
+    }
+
+    return names.join(', ');
 }
 
-// TODO: Error handling for bad songs+artists.
+/**
+ * Lookup a song with the spotify API.
+ *
+ * @param {string} songName
+ */
 function spotifyThisSong(songName) {
-    const query = {
-        type: 'track',
-        limit: 1,
-        query: songName
-    };
-
     const spotify = new Spotify({
         id: config.spotify.id,
         secret: config.spotify.secret
     });
 
-    // TODO: Validate properties are in the result and return required items.
-    spotify.search(query)
+    const parameters = {
+        type: 'track',
+        limit: 1,
+        query: songName
+    };
+
+    spotify
+        .search(parameters)
         .then(function(data) {
-            logger.debug(data.tracks);
+            if (!data.tracks.total > 0) {
+                return console.log(
+                    chalk.red(
+                        "I'm sorry, the song you requested was not found."
+                    )
+                );
+            }
+
+            data.tracks.items.forEach(function(track) {
+                if (track.hasOwnProperty('name')) {
+                    console.log(
+                        chalk.white('Song Name: ') +
+                        chalk.yellow(track.name)
+                    );
+                }
+                if (track.hasOwnProperty('artists')) {
+                    console.log(
+                        chalk.white('Artist(s): ') +
+                        chalk.yellow(getSpotifyArtists(track.artists))
+                    );
+                }
+                if (track.hasOwnProperty('album')) {
+                    console.log(
+                        chalk.white('Album: ') +
+                        chalk.yellow(track.album.name)
+                    );
+                    if (track.album.hasOwnProperty('release_date')) {
+                        console.log(
+                            chalk.white('Release Date: ') +
+                            chalk.yellow(track.album.release_date)
+                        );
+                    }
+                }
+                if (track.hasOwnProperty('preview_url')) {
+                    console.log(
+                        chalk.white('Preview Link: ') +
+                        chalk.underline.blue(track.preview_url)
+                    );
+                }
+            });
         })
         .catch(function(error) {
             return logger.error(error);
@@ -142,12 +171,49 @@ function movieThis(movieName) {
     });
 }
 
+// TODO: Error handling for bad artists/bands.
+function concertThis(bandName) {
+    const eventData = [];
+
+    const query = {
+        url: `${config.bits.url}${bandName}/events`,
+        qs: {
+            app_id: config.bits.key
+        }
+    };
+
+    request.get(query, function(error, response, body) {
+        if (error) {
+            throw new Error(error);
+        }
+
+        if (response.statusCode === 200) {
+            const events = JSON.parse(body);
+
+            // TODO: Validate each property is in the result.
+            events.forEach(function(event) {
+                eventData.push({
+                    name: event.venue.name,
+                    country: event.venue.country,
+                    region: event.venue.region,
+                    city: event.venue.city,
+                    date: event.datetime
+                });
+            });
+        }
+
+        logger.debug(eventData);
+    });
+}
+
 // TODO: Handle bad file format.
 function doWhatItSays() {
     const stream = fs.createReadStream(path.join(__dirname, 'commands.csv'));
 
     stream.on('data', function(data) {
-        data.toString().split('\n')
+        data
+            .toString()
+            .split('\n')
             .forEach(function(line) {
                 const [operation, parameter] = line.split(',');
 
