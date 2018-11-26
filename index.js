@@ -127,7 +127,11 @@ function spotifyThisSong(songName) {
         });
 }
 
-// TODO: Error handling for bad Movie names.
+/**
+ * Lookup a movie with the OMDB API.
+ *
+ * @param {string} movieName
+ */
 function movieThis(movieName) {
     const query = {
         url: config.omdb.url,
@@ -149,24 +153,66 @@ function movieThis(movieName) {
         if (response.statusCode === 200) {
             const movie = JSON.parse(body);
 
-            // TODO: Handle no ratings.
-            const rtRating = movie.Ratings.find(function(rating) {
-                return rating.Source === 'Rotten Tomatoes';
-            });
+            if (movie.Response === 'False') {
+                return console.log(
+                    chalk.red(movie.Error)
+                );
+            }
 
-            // TODO: Validate each property is in the result.
-            const movieData = {
-                'Title': movie.Title,
-                'Released': movie.Released,
-                'IMDB Rating': movie.imdbRating,
-                'Country': movie.Country,
-                'Language': movie.Language,
-                'Plot': movie.Plot,
-                'Actors': movie.Actors,
-                'Rotten Tomatoes Rating': rtRating.Value
-            };
+            if (movie.hasOwnProperty('Title')) {
+                console.log(
+                    chalk.white('Title: ') +
+                    chalk.yellow(movie.Title)
+                );
+            }
+            if (movie.hasOwnProperty('Released')) {
+                console.log(
+                    chalk.white('Released Year: ') +
+                    chalk.yellow(movie.Released)
+                );
+            }
+            if (movie.hasOwnProperty('imdbRating')) {
+                console.log(
+                    chalk.white('IMDB Rating: ') +
+                    chalk.yellow(movie.imdbRating)
+                );
+            }
+            if (movie.hasOwnProperty('Country')) {
+                console.log(
+                    chalk.white('Production Countries: ') +
+                    chalk.yellow(movie.Country)
+                );
+            }
+            if (movie.hasOwnProperty('Language')) {
+                console.log(
+                    chalk.white('Language(s): ') +
+                    chalk.yellow(movie.Language)
+                );
+            }
+            if (movie.hasOwnProperty('Actors')) {
+                console.log(
+                    chalk.white('Actors: ') +
+                    chalk.yellow(movie.Actors)
+                );
+            }
+            if (movie.hasOwnProperty('Ratings')) {
+                const rtRating = movie.Ratings.find(function(rating) {
+                    return rating.Source === 'Rotten Tomatoes';
+                });
 
-            logger.info(movieData);
+                if (rtRating.Value) {
+                    console.log(
+                        chalk.white('Rotten Tomatoes Rating: ') +
+                        chalk.yellow(rtRating.Value)
+                    );
+                }
+            }
+            if (movie.hasOwnProperty('Plot')) {
+                console.log(
+                    chalk.white('Plot: ') +
+                    chalk.yellow(movie.Plot)
+                );
+            }
         }
     });
 }
