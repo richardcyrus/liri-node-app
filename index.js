@@ -14,6 +14,7 @@ const argv = require('yargs')
     .demandCommand(1, 'Please choose one of the commands.')
     .strict()
     .help()
+    .alias('help', 'h')
     .argv;
 
 const readline = require('readline');
