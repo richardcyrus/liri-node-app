@@ -16,6 +16,7 @@ const argv = require('yargs')
     .help()
     .argv;
 
+const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
 const request = require('request');
@@ -252,39 +253,31 @@ function concertThis(bandName) {
     });
 }
 
-// TODO: Handle bad file format.
 function doWhatItSays() {
-    const stream = fs.createReadStream(path.join(__dirname, 'commands.csv'));
-
-    stream.on('data', function(data) {
-        data
-            .toString()
-            .split('\n')
-            .forEach(function(line) {
-                const [operation, parameter] = line.split(',');
-
-                // TODO: Return with reason for ABORT.
-                if (!operation || parameter === 'undefined') {
-                    return;
-                }
-
-                switch (operation) {
-                    case 'concert-this':
-                        concertThis(parameter);
-                        break;
-                    case 'spotify-this-song':
-                        spotifyThisSong(parameter);
-                        break;
-                    case 'movie-this':
-                        movieThis(parameter);
-                        break;
-                    default:
-                        throw new Error('The specified command is not valid!');
-                }
-            });
+    const rl = readline.createInterface({
+        input: fs.createReadStream(path.join(__dirname, 'commands.csv')),
+        crlfDelay: Infinity
     });
 
-    stream.on('error', function(error) {
-        return logger.error(error);
+    rl.on('line', function(line) {
+        const [command, value] = line.split(',');
+
+        if (!command || value === undefined) {
+            return;
+        }
+
+        switch (command) {
+            case 'concert-this':
+                concertThis(value);
+                break;
+            case 'spotify-this-song':
+                spotifyThisSong(value);
+                break;
+            case 'movie-this':
+                movieThis(value);
+                break;
+            default:
+                throw new Error('The specified command is not valid!');
+        }
     });
 }
