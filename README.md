@@ -42,7 +42,8 @@ LIRI will accept the following commands:
     - The format of the `commands.csv` file is:
         
     ```csv
-        command,"<parameter>"
+        command,<parameter>
+        spotify-this-song,The Sign Ace of Base
     ```
     
     - The file does not contain a header line.

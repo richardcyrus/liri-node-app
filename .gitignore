@@ -1,4 +1,7 @@
+!bin/*
 .env
 .idea
 .history
 node_modules
+*.log
+log.txt

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * LIRI Bot.
  *
@@ -8,49 +7,239 @@
 'use strict';
 
 require('dotenv').config();
-const settings = require('./config');
+const { config } = require('./config');
+const argv = require('yargs')
+    .usage('Usage: $0 <command> [options]')
+    .commandDir('commands')
+    .demandCommand(1, 'Please choose one of the commands.')
+    .strict()
+    .help()
+    .alias('help', 'h')
+    .argv;
+
+const readline = require('readline');
+const fs = require('fs');
+const path = require('path');
+const chalk = require('chalk');
 const request = require('request');
 const Spotify = require('node-spotify-api');
-// const moment = require('moment');
-const fs = require('fs');
+const moment = require('moment');
 
-function spotifyThisSong (songName) {
-    const query = {
+switch (argv._[0]) {
+    case 'concert-this':
+        concertThis(argv.bandName);
+        break;
+    case 'spotify-this-song':
+        spotifyThisSong(argv.songName);
+        break;
+    case 'movie-this':
+        movieThis(argv.movieName);
+        break;
+    case 'do-what-it-says':
+        doWhatItSays();
+        break;
+    default:
+        throw new Error('Invalid command!');
+}
+
+/**
+ * Return the artist names from a Spotify track look-up.
+ *
+ * @param {Object} artists
+ * @returns {string}
+ */
+function getSpotifyArtists(artists) {
+    const names = [];
+
+    artists.forEach(function(artist) {
+        names.push(artist.name);
+    });
+
+    if (!names.length > 0) {
+        return '';
+    }
+
+    return names.join(', ');
+}
+
+/**
+ * Lookup a song with the spotify API.
+ *
+ * @param {string} songName
+ */
+function spotifyThisSong(songName) {
+    const spotify = new Spotify({
+        id: config.spotify.id,
+        secret: config.spotify.secret
+    });
+
+    const parameters = {
         type: 'track',
         limit: 1,
         query: songName
     };
 
-    const spotify = new Spotify({
-        id: settings.config.spotify.id,
-        secret: settings.config.spotify.secret
-    });
+    spotify
+        .search(parameters)
+        .then(function(data) {
+            if (!data.tracks.total > 0) {
+                return console.error(
+                    chalk.red(
+                        "\nI'm sorry, the song you requested was not found."
+                    )
+                );
+            }
 
-    spotify.search(query)
-        .then(function (data) {
-            console.log(data.tracks);
+            data.tracks.items.forEach(function(track) {
+                if (track.hasOwnProperty('name')) {
+                    console.log(
+                        chalk.white('\nSong Name: ') +
+                        chalk.cyan(track.name)
+                    );
+                }
+                if (track.hasOwnProperty('artists')) {
+                    console.log(
+                        chalk.white('Artist(s): ') +
+                        chalk.cyan(getSpotifyArtists(track.artists))
+                    );
+                }
+                if (track.hasOwnProperty('album')) {
+                    console.log(
+                        chalk.white('Album: ') +
+                        chalk.cyan(track.album.name)
+                    );
+                    if (track.album.hasOwnProperty('release_date')) {
+                        console.log(
+                            chalk.white('Release Date: ') +
+                            chalk.cyan(track.album.release_date)
+                        );
+                    }
+                }
+                if (track.hasOwnProperty('preview_url')) {
+                    console.log(
+                        chalk.white('Preview Link: ') +
+                        chalk.underline.cyan(track.preview_url)
+                    );
+                }
+            });
         })
-        .catch(function (error) {
+        .catch(function(error) {
             return console.error(error);
         });
 }
 
-function concertThis (bandName) {
-    let eventData = [];
+/**
+ * Lookup a movie with the OMDB API.
+ *
+ * @param {string} movieName
+ */
+function movieThis(movieName) {
+    const query = {
+        url: config.omdb.url,
+        qs: {
+            t: movieName,
+            type: 'movie',
+            r: 'json',
+            v: 1,
+            plot: 'full',
+            apikey: config.omdb.key
+        }
+    };
 
-    /* venue name, venue location, event date */
-    const queryUrl = `${settings.config.bits.url}${bandName}/events?app_id=${settings.config.bits.key}`;
+    request.get(query, function(error, response, body) {
+        if (error) {
+            throw new Error(error);
+        }
 
-    request.get(queryUrl, function (error, response, body) {
+        if (response.statusCode === 200) {
+            const movie = JSON.parse(body);
+
+            if (movie.Response === 'False') {
+                return console.log(
+                    chalk.red(`\n${movie.Error}`)
+                );
+            }
+
+            if (movie.hasOwnProperty('Title')) {
+                console.log(
+                    chalk.white('\nTitle: ') +
+                    chalk.blue(movie.Title)
+                );
+            }
+            if (movie.hasOwnProperty('Released')) {
+                console.log(
+                    chalk.white('Released: ') +
+                    chalk.blue(movie.Released)
+                );
+            }
+            if (movie.hasOwnProperty('imdbRating')) {
+                console.log(
+                    chalk.white('IMDB Rating: ') +
+                    chalk.blue(movie.imdbRating)
+                );
+            }
+            if (movie.hasOwnProperty('Ratings')) {
+                const rtRating = movie.Ratings.find(function(rating) {
+                    return rating.Source === 'Rotten Tomatoes';
+                });
+
+                if (rtRating.Value) {
+                    console.log(
+                        chalk.white('Rotten Tomatoes Rating: ') +
+                        chalk.blue(rtRating.Value)
+                    );
+                }
+            }
+            if (movie.hasOwnProperty('Country')) {
+                console.log(
+                    chalk.white('Production Countries: ') +
+                    chalk.blue(movie.Country)
+                );
+            }
+            if (movie.hasOwnProperty('Language')) {
+                console.log(
+                    chalk.white('Language(s): ') +
+                    chalk.blue(movie.Language)
+                );
+            }
+            if (movie.hasOwnProperty('Actors')) {
+                console.log(
+                    chalk.white('Actors: ') +
+                    chalk.blue(movie.Actors)
+                );
+            }
+            if (movie.hasOwnProperty('Plot')) {
+                console.log(
+                    chalk.white('Plot: ') +
+                    chalk.green(movie.Plot)
+                );
+            }
+        }
+    });
+}
+
+// TODO: Error handling for bad artists/bands.
+function concertThis(bandName) {
+    const eventData = [];
+
+    const query = {
+        url: `${config.bits.url}${bandName}/events`,
+        qs: {
+            app_id: config.bits.key
+        }
+    };
+
+    request.get(query, function(error, response, body) {
         if (error) {
             throw new Error(error);
         }
 
         if (response.statusCode === 200) {
             const events = JSON.parse(body);
-            // console.log(events);
+            // logger.debug(events);
 
-            events.forEach(function (event) {
+            // TODO: Validate each property is in the result.
+            events.forEach(function(event) {
                 eventData.push({
                     name: event.venue.name,
                     country: event.venue.country,
@@ -61,90 +250,35 @@ function concertThis (bandName) {
             });
         }
 
-        console.log(eventData);
+        // logger.debug(eventData);
     });
 }
 
-function movieThis (movieName) {
-    const query = {
-        url: settings.config.omdb.url,
-        qs: {
-            t: movieName,
-            type: 'movie',
-            r: 'json',
-            v: 1,
-            plot: 'full',
-            apikey: settings.config.omdb.key
-        }
-    };
+function doWhatItSays() {
+    const rl = readline.createInterface({
+        input: fs.createReadStream(path.join(__dirname, 'commands.csv')),
+        crlfDelay: Infinity
+    });
 
-    request.get(query, function (error, response, body) {
-        if (error) {
-            throw new Error(error);
+    rl.on('line', function(line) {
+        const [command, value] = line.split(',');
+
+        if (!command || value === undefined) {
+            return;
         }
 
-        if (response.statusCode === 200) {
-            const movie = JSON.parse(body);
-
-            const rtRating = movie.Ratings.find(function (rating) {
-                return rating.Source === 'Rotten Tomatoes';
-            });
-
-            const movieData = {
-                'Title': movie.Title,
-                'Released': movie.Released,
-                'IMDB Rating': movie.imdbRating,
-                'Country': movie.Country,
-                'Language': movie.Language,
-                'Plot': movie.Plot,
-                'Actors': movie.Actors,
-                'Rotten Tomatoes Rating': rtRating.Value
-            };
-
-            console.log(movieData);
+        switch (command) {
+            case 'concert-this':
+                concertThis(value);
+                break;
+            case 'spotify-this-song':
+                spotifyThisSong(value);
+                break;
+            case 'movie-this':
+                movieThis(value);
+                break;
+            default:
+                throw new Error('The specified command is not valid!');
         }
     });
 }
-
-function executeWhatItSays (command, parameter) {
-    if (!command || parameter === 'undefined') {
-        return;
-    }
-
-    switch (command) {
-        case 'concert-this':
-            console.log(`Running ${command} with band name "${parameter}"`);
-            break;
-        case 'spotify-this-song':
-            console.log(`Running ${command} with song name "${parameter}"`);
-            break;
-        case 'movie-this':
-            console.log(`Running ${command} with movie name "${parameter}"`);
-            break;
-        default:
-            throw new Error('The specified command is not valid!');
-    }
-}
-
-function doWhatItSays () {
-    const stream = fs.createReadStream('commands.csv');
-
-    stream.on('data', function (data) {
-        data.toString().split('\n')
-            .forEach(function (line) {
-                let operation;
-                let parameter;
-                [operation, parameter] = line.split(',');
-                executeWhatItSays(operation, parameter);
-            });
-    });
-    stream.on('error', function (error) {
-        console.error(error);
-        return false;
-    });
-}
-
-// doWhatItSays();
-// concertThis('P!nk');
-// movieThis('Mr. Nobody');
-spotifyThisSong('The Sign Ace of Base');

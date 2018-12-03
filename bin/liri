@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+/**
+ * LIRI Bot.
+ *
+ * The Coding Boot Camp at UNC Charlotte.
+ * (c) 2018 Richard Cyrus <richard.cyrus@rcyrus.com>.
+ */
+'use strict';
+
+require('../index');
