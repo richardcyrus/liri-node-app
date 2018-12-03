@@ -25,7 +25,6 @@ const request = require('request');
 const Spotify = require('node-spotify-api');
 const moment = require('moment');
 
-// TODO: Wrap in function and generalize so doWhatItSays() can use this.
 switch (argv._[0]) {
     case 'concert-this':
         concertThis(argv.bandName);
@@ -40,7 +39,7 @@ switch (argv._[0]) {
         doWhatItSays();
         break;
     default:
-        logger.error('Invalid command!');
+        throw new Error('Invalid command!');
 }
 
 /**
@@ -84,7 +83,7 @@ function spotifyThisSong(songName) {
         .search(parameters)
         .then(function(data) {
             if (!data.tracks.total > 0) {
-                return console.log(
+                return console.error(
                     chalk.red(
                         "\nI'm sorry, the song you requested was not found."
                     )
@@ -125,7 +124,7 @@ function spotifyThisSong(songName) {
             });
         })
         .catch(function(error) {
-            return logger.error(error);
+            return console.error(error);
         });
 }
 
@@ -237,6 +236,7 @@ function concertThis(bandName) {
 
         if (response.statusCode === 200) {
             const events = JSON.parse(body);
+            // logger.debug(events);
 
             // TODO: Validate each property is in the result.
             events.forEach(function(event) {
@@ -250,7 +250,7 @@ function concertThis(bandName) {
             });
         }
 
-        logger.debug(eventData);
+        // logger.debug(eventData);
     });
 }
 
