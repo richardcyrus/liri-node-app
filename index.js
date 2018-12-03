@@ -7,7 +7,7 @@
 'use strict';
 
 require('dotenv').config();
-const { logger, config } = require('./config');
+const { config } = require('./config');
 const argv = require('yargs')
     .usage('Usage: $0 <command> [options]')
     .commandDir('commands')

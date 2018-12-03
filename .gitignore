@@ -3,3 +3,5 @@
 .idea
 .history
 node_modules
+*.log
+log.txt
