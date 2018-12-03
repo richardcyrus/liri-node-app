@@ -21,7 +21,7 @@ const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
-const request = require('request');
+const axios = require('axios');
 const Spotify = require('node-spotify-api');
 const moment = require('moment');
 
@@ -39,7 +39,42 @@ switch (argv._[0]) {
         doWhatItSays();
         break;
     default:
-        throw new Error('Invalid command!');
+        console.error('The specified command is not valid!');
+}
+
+/**
+ * Process and run the `do-what-it-says` command.
+ *
+ * Reads the commands.csv file, one line at a time, and executes the
+ * appropriate queries.
+ */
+function doWhatItSays() {
+    const rl = readline.createInterface({
+        input: fs.createReadStream(path.join(__dirname, 'commands.csv')),
+        crlfDelay: Infinity
+    });
+
+    rl.on('line', function(line) {
+        const [command, value] = line.split(',');
+
+        if (!command || value === undefined) {
+            return;
+        }
+
+        switch (command) {
+            case 'concert-this':
+                concertThis(value);
+                break;
+            case 'spotify-this-song':
+                spotifyThisSong(value);
+                break;
+            case 'movie-this':
+                movieThis(value);
+                break;
+            default:
+                console.error('The specified command is not valid!');
+        }
+    });
 }
 
 /**
@@ -136,7 +171,8 @@ function spotifyThisSong(songName) {
 function movieThis(movieName) {
     const query = {
         url: config.omdb.url,
-        qs: {
+        method: 'get',
+        params: {
             t: movieName,
             type: 'movie',
             r: 'json',
@@ -146,139 +182,111 @@ function movieThis(movieName) {
         }
     };
 
-    request.get(query, function(error, response, body) {
-        if (error) {
-            throw new Error(error);
-        }
+    axios.request(query)
+        .then(function(response) {
+            if (response.status === 200) {
+                const movie = response.data;
 
-        if (response.statusCode === 200) {
-            const movie = JSON.parse(body);
+                if (movie.Response === 'False') {
+                    return console.log(
+                        chalk.red(`\n${movie.Error}`)
+                    );
+                }
 
-            if (movie.Response === 'False') {
-                return console.log(
-                    chalk.red(`\n${movie.Error}`)
-                );
-            }
-
-            if (movie.hasOwnProperty('Title')) {
-                console.log(
-                    chalk.white('\nTitle: ') +
-                    chalk.blue(movie.Title)
-                );
-            }
-            if (movie.hasOwnProperty('Released')) {
-                console.log(
-                    chalk.white('Released: ') +
-                    chalk.blue(movie.Released)
-                );
-            }
-            if (movie.hasOwnProperty('imdbRating')) {
-                console.log(
-                    chalk.white('IMDB Rating: ') +
-                    chalk.blue(movie.imdbRating)
-                );
-            }
-            if (movie.hasOwnProperty('Ratings')) {
-                const rtRating = movie.Ratings.find(function(rating) {
-                    return rating.Source === 'Rotten Tomatoes';
-                });
-
-                if (rtRating.Value) {
+                if (movie.hasOwnProperty('Title')) {
                     console.log(
-                        chalk.white('Rotten Tomatoes Rating: ') +
-                        chalk.blue(rtRating.Value)
+                        chalk.white('\nTitle: ') +
+                        chalk.blue(movie.Title)
+                    );
+                }
+                if (movie.hasOwnProperty('Released')) {
+                    console.log(
+                        chalk.white('Released: ') +
+                        chalk.blue(movie.Released)
+                    );
+                }
+                if (movie.hasOwnProperty('imdbRating')) {
+                    console.log(
+                        chalk.white('IMDB Rating: ') +
+                        chalk.blue(movie.imdbRating)
+                    );
+                }
+                if (movie.hasOwnProperty('Ratings')) {
+                    const rtRating = movie.Ratings.find(function(rating) {
+                        return rating.Source === 'Rotten Tomatoes';
+                    });
+
+                    if (rtRating.Value) {
+                        console.log(
+                            chalk.white('Rotten Tomatoes Rating: ') +
+                            chalk.blue(rtRating.Value)
+                        );
+                    }
+                }
+                if (movie.hasOwnProperty('Country')) {
+                    console.log(
+                        chalk.white('Production Countries: ') +
+                        chalk.blue(movie.Country)
+                    );
+                }
+                if (movie.hasOwnProperty('Language')) {
+                    console.log(
+                        chalk.white('Language(s): ') +
+                        chalk.blue(movie.Language)
+                    );
+                }
+                if (movie.hasOwnProperty('Actors')) {
+                    console.log(
+                        chalk.white('Actors: ') +
+                        chalk.blue(movie.Actors)
+                    );
+                }
+                if (movie.hasOwnProperty('Plot')) {
+                    console.log(
+                        chalk.white('Plot: ') +
+                        chalk.green(movie.Plot)
                     );
                 }
             }
-            if (movie.hasOwnProperty('Country')) {
-                console.log(
-                    chalk.white('Production Countries: ') +
-                    chalk.blue(movie.Country)
-                );
-            }
-            if (movie.hasOwnProperty('Language')) {
-                console.log(
-                    chalk.white('Language(s): ') +
-                    chalk.blue(movie.Language)
-                );
-            }
-            if (movie.hasOwnProperty('Actors')) {
-                console.log(
-                    chalk.white('Actors: ') +
-                    chalk.blue(movie.Actors)
-                );
-            }
-            if (movie.hasOwnProperty('Plot')) {
-                console.log(
-                    chalk.white('Plot: ') +
-                    chalk.green(movie.Plot)
-                );
-            }
-        }
-    });
+        })
+        .catch(function(error) {
+            console.error(error);
+        });
 }
 
-// TODO: Error handling for bad artists/bands.
 function concertThis(bandName) {
-    const eventData = [];
+    axios
+        .all([getArtist(bandName), getConcertEvents(bandName)])
+        .then(axios
+            .spread(function(artist, events) {
+                console.log(artist.data);
+                console.dir(events.data);
+            })
+        )
+        .catch(function(error) {
+            console.error(error);
+        });
+}
 
+function getArtist(artistName) {
     const query = {
-        url: `${config.bits.url}${bandName}/events`,
-        qs: {
+        url: `${config.bits.url}${artistName}`,
+        method: 'get',
+        params: {
             app_id: config.bits.key
         }
     };
 
-    request.get(query, function(error, response, body) {
-        if (error) {
-            throw new Error(error);
-        }
-
-        if (response.statusCode === 200) {
-            const events = JSON.parse(body);
-            // logger.debug(events);
-
-            // TODO: Validate each property is in the result.
-            events.forEach(function(event) {
-                eventData.push({
-                    name: event.venue.name,
-                    country: event.venue.country,
-                    region: event.venue.region,
-                    city: event.venue.city,
-                    date: event.datetime
-                });
-            });
-        }
-
-        // logger.debug(eventData);
-    });
+    return axios.request(query);
 }
 
-function doWhatItSays() {
-    const rl = readline.createInterface({
-        input: fs.createReadStream(path.join(__dirname, 'commands.csv')),
-        crlfDelay: Infinity
-    });
-
-    rl.on('line', function(line) {
-        const [command, value] = line.split(',');
-
-        if (!command || value === undefined) {
-            return;
+function getConcertEvents(artistName) {
+    const query = {
+        url: `${config.bits.url}${artistName}/events`,
+        params: {
+            app_id: config.bits.key
         }
+    };
 
-        switch (command) {
-            case 'concert-this':
-                concertThis(value);
-                break;
-            case 'spotify-this-song':
-                spotifyThisSong(value);
-                break;
-            case 'movie-this':
-                movieThis(value);
-                break;
-            default:
-                throw new Error('The specified command is not valid!');
-        }
-    });
+    return axios.request(query);
 }
