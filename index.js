@@ -20,10 +20,10 @@ const argv = require('yargs')
 const readline = require('readline');
 const fs = require('fs');
 const path = require('path');
+const chalk = require('chalk');
 const request = require('request');
 const Spotify = require('node-spotify-api');
 const moment = require('moment');
-const chalk = require('chalk');
 
 // TODO: Wrap in function and generalize so doWhatItSays() can use this.
 switch (argv._[0]) {
@@ -86,7 +86,7 @@ function spotifyThisSong(songName) {
             if (!data.tracks.total > 0) {
                 return console.log(
                     chalk.red(
-                        "I'm sorry, the song you requested was not found."
+                        "\nI'm sorry, the song you requested was not found."
                     )
                 );
             }
@@ -94,32 +94,32 @@ function spotifyThisSong(songName) {
             data.tracks.items.forEach(function(track) {
                 if (track.hasOwnProperty('name')) {
                     console.log(
-                        chalk.white('Song Name: ') +
-                        chalk.yellow(track.name)
+                        chalk.white('\nSong Name: ') +
+                        chalk.cyan(track.name)
                     );
                 }
                 if (track.hasOwnProperty('artists')) {
                     console.log(
                         chalk.white('Artist(s): ') +
-                        chalk.yellow(getSpotifyArtists(track.artists))
+                        chalk.cyan(getSpotifyArtists(track.artists))
                     );
                 }
                 if (track.hasOwnProperty('album')) {
                     console.log(
                         chalk.white('Album: ') +
-                        chalk.yellow(track.album.name)
+                        chalk.cyan(track.album.name)
                     );
                     if (track.album.hasOwnProperty('release_date')) {
                         console.log(
                             chalk.white('Release Date: ') +
-                            chalk.yellow(track.album.release_date)
+                            chalk.cyan(track.album.release_date)
                         );
                     }
                 }
                 if (track.hasOwnProperty('preview_url')) {
                     console.log(
                         chalk.white('Preview Link: ') +
-                        chalk.underline.blue(track.preview_url)
+                        chalk.underline.cyan(track.preview_url)
                     );
                 }
             });
@@ -157,44 +157,26 @@ function movieThis(movieName) {
 
             if (movie.Response === 'False') {
                 return console.log(
-                    chalk.red(movie.Error)
+                    chalk.red(`\n${movie.Error}`)
                 );
             }
 
             if (movie.hasOwnProperty('Title')) {
                 console.log(
-                    chalk.white('Title: ') +
-                    chalk.yellow(movie.Title)
+                    chalk.white('\nTitle: ') +
+                    chalk.blue(movie.Title)
                 );
             }
             if (movie.hasOwnProperty('Released')) {
                 console.log(
-                    chalk.white('Released Year: ') +
-                    chalk.yellow(movie.Released)
+                    chalk.white('Released: ') +
+                    chalk.blue(movie.Released)
                 );
             }
             if (movie.hasOwnProperty('imdbRating')) {
                 console.log(
                     chalk.white('IMDB Rating: ') +
-                    chalk.yellow(movie.imdbRating)
-                );
-            }
-            if (movie.hasOwnProperty('Country')) {
-                console.log(
-                    chalk.white('Production Countries: ') +
-                    chalk.yellow(movie.Country)
-                );
-            }
-            if (movie.hasOwnProperty('Language')) {
-                console.log(
-                    chalk.white('Language(s): ') +
-                    chalk.yellow(movie.Language)
-                );
-            }
-            if (movie.hasOwnProperty('Actors')) {
-                console.log(
-                    chalk.white('Actors: ') +
-                    chalk.yellow(movie.Actors)
+                    chalk.blue(movie.imdbRating)
                 );
             }
             if (movie.hasOwnProperty('Ratings')) {
@@ -205,14 +187,32 @@ function movieThis(movieName) {
                 if (rtRating.Value) {
                     console.log(
                         chalk.white('Rotten Tomatoes Rating: ') +
-                        chalk.yellow(rtRating.Value)
+                        chalk.blue(rtRating.Value)
                     );
                 }
+            }
+            if (movie.hasOwnProperty('Country')) {
+                console.log(
+                    chalk.white('Production Countries: ') +
+                    chalk.blue(movie.Country)
+                );
+            }
+            if (movie.hasOwnProperty('Language')) {
+                console.log(
+                    chalk.white('Language(s): ') +
+                    chalk.blue(movie.Language)
+                );
+            }
+            if (movie.hasOwnProperty('Actors')) {
+                console.log(
+                    chalk.white('Actors: ') +
+                    chalk.blue(movie.Actors)
+                );
             }
             if (movie.hasOwnProperty('Plot')) {
                 console.log(
                     chalk.white('Plot: ') +
-                    chalk.yellow(movie.Plot)
+                    chalk.green(movie.Plot)
                 );
             }
         }
