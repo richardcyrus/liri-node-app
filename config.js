@@ -13,10 +13,10 @@ exports.config = {
     },
     omdb: {
         key: process.env.OMDB_KEY,
-        url: process.env.OMDB_URL
+        url: process.env.OMDB_URL || 'http://www.omdbapi.com/'
     },
     bits: {
         key: process.env.BITS_APP_ID,
-        url: process.env.BITS_URL
+        url: process.env.BITS_URL || 'https://rest.bandsintown.com/artists/'
     }
 };
