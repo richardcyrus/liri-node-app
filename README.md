@@ -7,9 +7,9 @@
 
 LIRI will accept the following commands:
 
-* `concert-this '<band_name>'`
-* `spotify-this-song '<song_name>'`
-* `movie-this '<movie_name>'`
+* `concert-this <band_name>`
+* `spotify-this-song <song_name>`
+* `movie-this <movie_name>`
 * `do-what-it-says`
 
 ## Commands

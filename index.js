@@ -57,10 +57,6 @@ function doWhatItSays() {
     rl.on('line', function(line) {
         const [command, value] = line.split(',');
 
-        if (!command || value === undefined) {
-            return;
-        }
-
         switch (command) {
             case 'concert-this':
                 concertThis(value);
@@ -156,6 +152,13 @@ function spotifyThisSong(songName) {
                         chalk.underline.cyan(track.preview_url)
                     );
                 }
+                console.log(
+                    chalk.yellow(
+                        '------------------------------' +
+                        '------------------------------' +
+                        '--------------------'
+                    )
+                );
             });
         })
         .catch(function(error) {
@@ -247,6 +250,13 @@ function movieThis(movieName) {
                         chalk.green(movie.Plot)
                     );
                 }
+                console.log(
+                    chalk.yellow(
+                        '------------------------------' +
+                        '------------------------------' +
+                        '--------------------'
+                    )
+                );
             }
         })
         .catch(function(error) {
@@ -254,39 +264,77 @@ function movieThis(movieName) {
         });
 }
 
+/**
+ * Lookup event information with the Bands In Town API based on the
+ * name of the artist.
+ *
+ * @param {string} bandName
+ */
 function concertThis(bandName) {
+    const query = {
+        url: `${config.bits.url}${bandName}/events`,
+        params: {
+            app_id: config.bits.key
+        }
+    };
+
     axios
-        .all([getArtist(bandName), getConcertEvents(bandName)])
+        .all([axios.request(query)])
         .then(axios
-            .spread(function(artist, events) {
-                console.log(artist.data);
-                console.dir(events.data);
+            .spread(function(eventResponse) {
+                const events = eventResponse.data;
+
+                if (events.errorMessage) {
+                    return console.log(
+                        chalk.red(`\n${events.errorMessage}`)
+                    );
+                }
+
+                if (events.length === 0) {
+                    return console.log(
+                        chalk.magenta(
+                            `\nThere are no event dates for ${bandName}`
+                        )
+                    );
+                }
+
+                events.forEach(function(event) {
+                    let city = event.venue.city;
+
+                    if (event.venue.region !== '') {
+                        city = `${city}, ${event.venue.region}`;
+                    }
+
+                    const country = event.venue.country;
+
+                    console.log(
+                        chalk.white('\nArtist: ') +
+                        chalk.magenta(bandName)
+                    );
+                    console.log(
+                        chalk.white('Concert Date: ') +
+                        chalk.magenta(moment(event.datetime)
+                            .format('MM/DD/YYYY'))
+                    );
+                    console.log(
+                        chalk.white('Venue: ') +
+                        chalk.magenta(event.venue.name)
+                    );
+                    console.log(
+                        chalk.white('Location: ') +
+                        chalk.magenta(`${city}, ${country}`)
+                    );
+                    console.log(
+                        chalk.yellow(
+                            '------------------------------' +
+                            '------------------------------' +
+                            '--------------------'
+                        )
+                    );
+                });
             })
         )
         .catch(function(error) {
             console.error(error);
         });
-}
-
-function getArtist(artistName) {
-    const query = {
-        url: `${config.bits.url}${artistName}`,
-        method: 'get',
-        params: {
-            app_id: config.bits.key
-        }
-    };
-
-    return axios.request(query);
-}
-
-function getConcertEvents(artistName) {
-    const query = {
-        url: `${config.bits.url}${artistName}/events`,
-        params: {
-            app_id: config.bits.key
-        }
-    };
-
-    return axios.request(query);
 }
